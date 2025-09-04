@@ -111,5 +111,3 @@ Background Tasks: Celery + Redis
 Others: Chart.js, Flask-Login, SQLAlchemy
 
 
-
-# ParkEasy
