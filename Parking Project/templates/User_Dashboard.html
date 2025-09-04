@@ -1,0 +1,1070 @@
+{% extends "layout.html" %}
+
+{% block title %}Parking Dashboard{% endblock %}
+
+{% block styles %}
+<style>
+    
+    body {
+        margin: 0;
+        padding: 0;
+        min-height: 100vh;
+        background-color: #f8f9fa;
+    }
+    
+    .main-container {
+        margin: 0;
+        padding: 0;
+        max-width: 100%;
+        width: 100%;
+        min-height: 100vh;
+    }
+    
+    /* Navbar styles - full width and fixed top */
+    .green-navbar { 
+        background-color: #28a745;
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        width: 100%;
+        z-index: 1030;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    
+    .navbar .container {
+        max-width: 100%;
+        width: 100%;
+        padding: 0 20px;
+    }
+    
+    /* Content spacing to account for fixed navbar */
+    .content-wrapper {
+        margin-top: 76px; 
+        padding: 20px;
+        width: 100%;
+    }
+    
+    /* Navbar layout - brand and left items */
+    .navbar-left {
+        display: flex;
+        align-items: center;
+        gap: 20px;
+    }
+    
+    /* Navbar right items */
+    .navbar-right {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+        margin-left: auto;
+    }
+    
+    /* Search bar styling */
+    .search-container {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    
+    .search-width {
+        max-width: 300px;
+        min-width: 250px;
+    }
+    
+    /* Navigation links styling */
+    .nav-link {
+        color: white !important;
+        text-decoration: none;
+        padding: 8px 12px;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+    }
+    
+    .nav-link:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+        color: white !important;
+    }
+    
+    .navbar-text {
+        color: white !important;
+        margin: 0;
+        font-weight: 500;
+    }
+    
+    /* Button styling in navbar */
+    .btn-link.text-white {
+        border: none;
+        background: none;
+        color: white !important;
+        padding: 8px 12px;
+        border-radius: 4px;
+        transition: background-color 0.2s;
+    }
+    
+    .btn-link.text-white:hover {
+        background-color: rgba(255, 255, 255, 0.1);
+        color: white !important;
+    }
+    
+    
+    .green-card { 
+        border-left: 3px solid #28a745; 
+    }
+    .green-btn { 
+        background-color: #28a745; 
+        border-color: #28a745; 
+    }
+    .green-btn:hover { 
+        background-color: #218838; 
+    }
+    .available-text { 
+        color: #28a745; 
+        font-weight: bold; 
+    }
+    .occupied-text { 
+        color: #dc3545; 
+        font-weight: bold; 
+    }
+    .money-text { 
+        font-size: 1.1em; 
+        font-weight: bold; 
+        color: #28a745; 
+    }
+    .active-booking {
+        background-color: #fff3cd;
+    }
+    
+    
+    [v-cloak] {
+        display: none;
+    }
+
+  
+    .btn {
+        white-space: nowrap;
+        min-height: 38px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    .btn-sm {
+        min-height: 31px;
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    
+    .btn-success, .btn-danger, .btn-secondary {
+        color: white !important;
+    }
+
+ 
+    .loading-overlay {
+        position: relative;
+    }
+    
+    .loading-overlay::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(255, 255, 255, 0.8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1000;
+    }
+    
+    /* Responsive adjustments */
+    @media (max-width: 768px) {
+        .navbar-right {
+            flex-direction: column;
+            gap: 10px;
+        }
+        
+        .search-width {
+            min-width: 200px;
+            max-width: 200px;
+        }
+        
+        .content-wrapper {
+            margin-top: 120px; 
+            padding: 15px;
+        }
+    }
+    
+    @media (max-width: 576px) {
+        .navbar .container {
+            padding: 0 10px;
+        }
+        
+        .navbar-left {
+            gap: 10px;
+        }
+        
+        .navbar-right {
+            gap: 8px;
+        }
+        
+        .search-width {
+            min-width: 150px;
+            max-width: 150px;
+        }
+        
+        .content-wrapper {
+            margin-top: 140px;
+            padding: 10px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="main-container" id="parkingApp" v-cloak>
+
+   
+    <nav class="navbar navbar-expand-lg navbar-dark green-navbar">
+        <div class="container">
+            <!-- Left side: Brand, Hi message, Profile -->
+            <div class="navbar-left">
+                <a class="navbar-brand" href="#"><i class="fas fa-car"></i> ParkEasy</a>
+                <span class="navbar-text">Hi, {{ current_user.fullname }}!</span>
+                <a class="nav-link" href="{{ url_for('main.user_profile') }}">
+                    <i class="fas fa-user me-1"></i>Profile
+                </a>
+            </div>
+
+            <!-- Right side: Search and Logout -->
+            <div class="navbar-right">
+                <div class="search-container">
+                    <div class="d-flex search-width">
+                        <input  class="form-control"
+                                v-model="searchText"
+                                placeholder="Search parking areas..."
+                                @keyup.enter="searchParking"
+                                @input="onSearchInput">
+                        <button class="btn btn-light ms-2" @click="searchParking" :disabled="searchLoading">
+                            <i class="fas fa-search" v-if="!searchLoading"></i>
+                            <div class="spinner-border spinner-border-sm" v-else role="status">
+                                <span class="visually-hidden">Searching...</span>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+                <button class="btn btn-link text-white" onclick="doLogout()">
+                    <i class="fas fa-sign-out-alt me-1"></i>Logout
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ─────────────────────── MAIN CONTENT ─────────────────────── -->
+    <div class="content-wrapper">
+       
+        <div v-if="showAlert" :class="'alert alert-'+alertType+' alert-dismissible'" role="alert">
+            <i :class="alertIcon"></i> [[ alertMsg ]]
+            <button type="button" class="btn-close" @click="hideAlert"></button>
+        </div>
+
+        <div class="mb-4">
+            <button class="btn green-btn me-2" @click="currentView = 'home'">
+                <i class="fas fa-home"></i> Home
+            </button>
+            <button class="btn btn-outline-success" @click="goToSummary">
+                <i class="fas fa-chart-bar"></i> Summary
+            </button>
+        </div>
+
+      
+        <div v-if="currentView === 'home'">
+            <div class="row">
+                <!-- ──────── MAIN TABLES ──────── -->
+                <div class="col-lg-8">
+
+                    <!-- ALL PARKING LOTS / SEARCH RESULTS -->
+                    <div v-if="displayedParkingLots.length > 0" class="card green-card mb-4">
+                        <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-map-marker-alt"></i> 
+                                <span v-if="searchResults.length > 0">Search Results ([[ searchResults.length ]])</span>
+                                <span v-else>Available Parking Lots ([[ allParkingLots.length ]])</span>
+                            </h5>
+                            <div>
+                                <!-- Clear search button when showing search results -->
+                                <button v-if="searchResults.length > 0" class="btn btn-light btn-sm me-2" @click="clearSearch">
+                                    <i class="fas fa-times"></i> Clear Search
+                                </button>
+                                <!-- Refresh button -->
+                                <button class="btn btn-light btn-sm" @click="loadAllParkingLots" :disabled="loading">
+                                    <i class="fas fa-sync-alt" v-if="!loading"></i>
+                                    <div class="spinner-border spinner-border-sm" role="status" v-else>
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <span class="ms-1">Refresh</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body" :class="{ 'loading-overlay': loading }">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Name</th>
+                                            <th>Location</th>
+                                            <th>Available</th>
+                                            <th>Price/Hour</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="lot in displayedParkingLots" :key="lot.id">
+                                            <td><strong>[[ lot.name ]]</strong></td>
+                                            <td>[[ lot.address || lot.location ]]</td>
+                                            <td>
+                                                <span :class="lot.available_spots > 0 ? 'available-text' : 'occupied-text'">
+                                                    [[ lot.available_spots ]]/[[ lot.total_spots ]]
+                                                </span>
+                                            </td>
+                                            <td class="money-text">₹[[ lot.cost_per_hour || lot.price_per_hour ]]</td>
+                                            <td>
+                                                <button class="btn btn-sm btn-success" 
+                                                        @click="openBookModal(lot)"
+                                                        :disabled="lot.available_spots === 0 || hasActiveBooking">
+                                                    <i class="fas fa-car me-1"></i>
+                                                    <span v-if="lot.available_spots === 0">Full</span>
+                                                    <span v-else-if="hasActiveBooking">Active Booking</span>
+                                                    <span v-else>Book Now</span>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <!-- Loading spinner overlay -->
+                            <div v-if="loading" class="d-flex justify-content-center py-4">
+                                <div class="spinner-border text-success" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Show message when no parking lots available -->
+                    <div v-if="displayedParkingLots.length === 0 && !loading" class="card green-card mb-4">
+                        <div class="card-body text-center py-5">
+                            <i class="fas fa-car fa-3x text-muted mb-3"></i>
+                            <h5 class="text-muted">No Parking Lots Available</h5>
+                            <p class="text-muted">
+                                <span v-if="searchResults.length === 0 && searchText">No parking lots found for "<strong>[[ searchText ]]</strong>"</span>
+                                <span v-else>No parking lots are currently available.</span>
+                            </p>
+                            <button v-if="searchText" class="btn btn-outline-success" @click="clearSearch">
+                                <i class="fas fa-times"></i> Clear Search
+                            </button>
+                            <button v-else class="btn btn-outline-success" @click="loadAllParkingLots">
+                                <i class="fas fa-refresh"></i> Refresh
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Loading state for initial load -->
+                    <div v-if="loading && displayedParkingLots.length === 0" class="card green-card mb-4">
+                        <div class="card-body text-center py-5">
+                            <div class="spinner-border text-success mb-3" role="status"></div>
+                            <h5 class="text-muted">Loading Parking Lots...</h5>
+                        </div>
+                    </div>
+
+                    <!-- MY BOOKINGS -->
+                    <div class="card green-card">
+                        <div class="card-header bg-success text-white d-flex justify-content-between">
+                            <h5 class="mb-0"><i class="fas fa-history"></i> My Bookings</h5>
+                            <button class="btn btn-light btn-sm" @click="loadMyBookings" :disabled="bookingsLoading">
+                                <i class="fas fa-sync-alt" v-if="!bookingsLoading"></i>
+                                <div class="spinner-border spinner-border-sm" role="status" v-else>
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <span class="ms-1">Refresh</span>
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div v-if="bookingsLoading" class="text-center py-4">
+                                <div class="spinner-border text-success" role="status"></div>
+                                <p class="mt-2 text-muted">Loading bookings...</p>
+                            </div>
+                            <div v-else class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Parking Lot</th>
+                                            <th>Vehicle</th>
+                                            <th>Start Time</th>
+                                            <th>Duration</th>
+                                            <th>Cost</th>
+                                            <th>Status</th>
+                                            <th>Action</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr v-for="booking in myBookings" :key="booking.id" 
+                                            :class="{ 'active-booking': booking.status === 'active' }">
+                                            <td>[[ booking.id ]]</td>
+                                            <td>[[ booking.location ]]</td>
+                                            <td><strong>[[ booking.vehicle_number ]]</strong></td>
+                                            <td>[[ formatDateTime(booking.parking_time) ]]</td>
+                                            <td>[[ getDuration(booking.parking_time, booking.releasing_time) ]]</td>
+                                            <td class="money-text">₹[[ booking.total_cost || '0' ]]</td>
+                                            <td>
+                                                <span :class="booking.status === 'active' ? 'badge bg-warning text-dark' : 'badge bg-success'">
+                                                    [[ booking.status.toUpperCase() ]]
+                                                </span>
+                                            </td>
+                                            <td>
+                                                <button v-if="booking.status === 'active'" 
+                                                        class="btn btn-sm btn-danger" 
+                                                        @click="openReleaseModal(booking)">
+                                                    <i class="fas fa-sign-out-alt me-1"></i>
+                                                    Release
+                                                </button>
+                                                <span v-else class="text-muted">
+                                                    <i class="fas fa-check"></i> Done
+                                                </span>
+                                            </td>
+                                        </tr>
+                                        <tr v-if="myBookings.length === 0">
+                                            <td colspan="8" class="text-center text-muted py-4">
+                                                <i class="fas fa-inbox fa-2x mb-2"></i>
+                                                <br>No bookings found
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ──────── SIDEBAR ──────── -->
+                <div class="col-lg-4">
+                    <!-- Current Active Booking -->
+                    <div v-if="activeBooking" class="card green-card mb-3">
+                        <div class="card-header bg-info text-white">
+                            <h6 class="mb-0"><i class="fas fa-car"></i> Current Parking</h6>
+                        </div>
+                        <div class="card-body">
+                            <p><strong>Location:</strong> [[ activeBooking.location ]]</p>
+                            <p><strong>Vehicle:</strong> [[ activeBooking.vehicle_number ]]</p>
+                            <p><strong>Since:</strong> [[ formatDateTime(activeBooking.parking_time) ]]</p>
+                            <p><strong>Duration:</strong> [[ getDuration(activeBooking.parking_time, null) ]]</p>
+                            <button class="btn btn-danger w-100" @click="openReleaseModal(activeBooking)">
+                                <i class="fas fa-sign-out-alt me-2"></i>
+                                Release Now
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Quick Numbers -->
+                    <div class="card green-card">
+                        <div class="card-header bg-primary text-white">
+                            <h6 class="mb-0"><i class="fas fa-chart-pie"></i> Quick Stats</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="row text-center">
+                                <div class="col-6 mb-3">
+                                    <h4 class="text-primary">[[ stats.totalBookings ]]</h4>
+                                    <small>Total Bookings</small>
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <h4 class="text-success">₹[[ stats.totalSpent ]]</h4>
+                                    <small>Money Spent</small>
+                                </div>
+                                <div class="col-12">
+                                    <h4 class="text-info">[[ stats.activeCount ]]</h4>
+                                    <small>Active Now</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─────────────────────── MODALS  ─────────────────────── -->
+
+    <!-- BOOK PARKING MODAL -->
+    <div class="modal fade" id="bookModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-success text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-car me-2"></i>
+                        Book Parking Spot
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Parking Lot:</strong></label>
+                        <input type="text" class="form-control-plaintext" :value="bookingForm.lotName || 'Loading...'" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Location:</strong></label>
+                        <input type="text" class="form-control-plaintext" :value="bookingForm.lotAddress || 'Loading...'" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Cost per Hour:</strong></label>
+                        <input type="text" class="form-control-plaintext" :value="bookingForm.costPerHour || 'Loading...'" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label"><strong>Vehicle Number: *</strong></label>
+                        <input type="text" class="form-control" v-model="bookingForm.vehicleNumber" 
+                               placeholder="Enter your vehicle number (e.g., MH01AB1234)" 
+                               style="text-transform: uppercase"
+                               maxlength="15">
+                        <div class="form-text">Enter your vehicle registration number</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>
+                        Cancel
+                    </button>
+                    <button type="button" class="btn btn-success" @click="doBooking" 
+                            :disabled="!bookingForm.vehicleNumber || bookingInProgress">
+                        <div class="spinner-border spinner-border-sm me-2" role="status" v-if="bookingInProgress">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <i class="fas fa-check me-1" v-else></i>
+                        [[ bookingInProgress ? 'Reserving...' : 'Reserve Spot' ]]
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- RELEASE MODAL -->
+    <div class="modal fade" id="releaseModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title">
+                        <i class="fas fa-sign-out-alt me-2"></i>
+                        Release Parking
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Are you sure you want to release this parking spot?
+                    </div>
+                    <div v-if="releaseForm.bookingId">
+                        <p><strong>Vehicle:</strong> [[ releaseForm.vehicleNumber ]]</p>
+                        <p><strong>Location:</strong> [[ releaseForm.location ]]</p>
+                        <p><strong>Duration:</strong> [[ releaseForm.duration ]]</p>
+                        <p><strong>Estimated Cost:</strong> <span class="money-text">₹[[ releaseForm.estimatedCost ]]</span></p>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times me-1"></i>
+                        Cancel
+                    </button>
+                    <button type="button" class="btn btn-danger" @click="doRelease" 
+                            :disabled="releaseInProgress">
+                        <div class="spinner-border spinner-border-sm me-2" role="status" v-if="releaseInProgress">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <i class="fas fa-sign-out-alt me-1" v-else></i>
+                        [[ releaseInProgress ? 'Releasing...' : 'Release Spot' ]]
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vue/2.6.14/vue.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.3.4/axios.min.js"></script>
+<script>
+new Vue({
+    el: '#parkingApp',
+    delimiters: ['[[', ']]'], // Change Vue delimiters to avoid conflict with Flask
+    data: {
+        currentView: 'home',
+        loading: false,
+        searchLoading: false,
+        bookingsLoading: false,
+        searchText: '',
+        searchResults: [],
+        allParkingLots: [],
+        myBookings: [],
+        activeBooking: null,
+        stats: {
+            totalBookings: 0,
+            totalSpent: 0,
+            activeCount: 0
+        },
+        showAlert: false,
+        alertMsg: '',
+        alertType: 'info',
+        alertIcon: 'fas fa-info-circle',
+        bookingForm: {
+            lotId: '',
+            lotName: '',
+            lotAddress: '',
+            costPerHour: '',
+            vehicleNumber: ''
+        },
+        releaseForm: {
+            bookingId: '',
+            vehicleNumber: '',
+            location: '',
+            duration: '',
+            estimatedCost: 0
+        },
+        bookingInProgress: false,
+        releaseInProgress: false,
+        searchTimeout: null
+    },
+    computed: {
+        hasActiveBooking() {
+            return this.activeBooking !== null;
+        },
+        displayedParkingLots() {
+            return this.searchResults.length > 0 ? this.searchResults : this.allParkingLots;
+        }
+    },
+    mounted() {
+        this.loadData();
+        console.log('Dashboard mounted successfully');
+    },
+    methods: {
+        async loadData() {
+            console.log('Loading dashboard data...');
+            await Promise.all([
+                this.loadMyBookings(),
+                this.loadStats(),
+                this.loadAllParkingLots()
+            ]);
+        },
+
+        async loadAllParkingLots() {
+            this.loading = true;
+            try {
+                console.log('Loading all parking lots...');
+                const response = await axios.get('/api/parking-lots/all');
+                console.log('Parking lots response:', response.data);
+                
+                if (response.data && response.data.results) {
+                    this.allParkingLots = response.data.results;
+                } else if (response.data && Array.isArray(response.data)) {
+                    this.allParkingLots = response.data;
+                } else {
+                    this.allParkingLots = [];
+                }
+                
+                console.log('Loaded parking lots:', this.allParkingLots.length);
+            } catch (error) {
+                console.error('Error loading parking lots:', error);
+                this.showMessage('Failed to load parking lots. Please refresh the page.', 'danger');
+                this.allParkingLots = [];
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async loadMyBookings() {
+            this.bookingsLoading = true;
+            try {
+                console.log('Loading user bookings...');
+                const response = await axios.get('/api/user/bookings');
+                console.log('Bookings response:', response.data);
+                
+                if (response.data && response.data.bookings) {
+                    this.myBookings = response.data.bookings;
+                } else if (response.data && Array.isArray(response.data)) {
+                    this.myBookings = response.data;
+                } else {
+                    this.myBookings = [];
+                }
+                
+                // Find active booking
+                this.activeBooking = this.myBookings.find(b => b.status === 'active') || null;
+                console.log('Active booking:', this.activeBooking);
+            } catch (error) {
+                console.error('Error loading bookings:', error);
+                this.showMessage('Error loading bookings', 'warning');
+                this.myBookings = [];
+            } finally {
+                this.bookingsLoading = false;
+            }
+        },
+
+        async loadStats() {
+            try {
+                const response = await axios.get('/api/user/stats');
+                console.log('Stats response:', response.data);
+                
+                if (response.data && response.data.success) {
+                    this.stats = {
+                        totalBookings: response.data.totalBookings || 0,
+                        totalSpent: response.data.totalSpent || 0,
+                        activeCount: response.data.activeCount || 0
+                    };
+                } else {
+                    // Fallback stats
+                    this.stats = {
+                        totalBookings: 0,
+                        totalSpent: 0,
+                        activeCount: 0
+                    };
+                }
+            } catch (error) {
+                console.error('Stats error:', error);
+                // Set fallback stats on error
+                this.stats = {
+                    totalBookings: 0,
+                    totalSpent: 0,
+                    activeCount: 0
+                };
+            }
+        },
+
+        onSearchInput() {
+            // Clear existing timeout
+            if (this.searchTimeout) {
+                clearTimeout(this.searchTimeout);
+            }
+            
+            // Set new timeout for auto-search after user stops typing
+            this.searchTimeout = setTimeout(() => {
+                if (this.searchText.trim()) {
+                    this.searchParking();
+                } else {
+                    this.clearSearch();
+                }
+            }, 500);
+        },
+
+        async searchParking() {
+            const searchQuery = this.searchText.trim();
+            
+            if (!searchQuery) {
+                this.clearSearch();
+                return;
+            }
+
+            this.searchLoading = true;
+            try {
+                console.log('Searching for:', searchQuery);
+                const response = await axios.get('/api/parking-lots/search', {
+                    params: { q: searchQuery }
+                });
+                
+                console.log('Search response:', response.data);
+                
+                if (response.data && response.data.success && response.data.results) {
+                    this.searchResults = response.data.results;
+                } else if (response.data && response.data.results) {
+                    this.searchResults = response.data.results;
+                } else if (response.data && Array.isArray(response.data)) {
+                    this.searchResults = response.data;
+                } else {
+                    this.searchResults = [];
+                }
+                
+                console.log('Search results:', this.searchResults);
+                
+                if (this.searchResults.length === 0) {
+                    this.showMessage(`No parking lots found for "${searchQuery}"`, 'info');
+                } else {
+                    this.showMessage(`Found ${this.searchResults.length} parking lot(s)`, 'success');
+                }
+            } catch (error) {
+                console.error('Search error:', error);
+                this.showMessage('Search failed. Please try again.', 'danger');
+                this.searchResults = [];
+            } finally {
+                this.searchLoading = false;
+            }
+        },
+
+        clearSearch() {
+            this.searchText = '';
+            this.searchResults = [];
+            if (this.searchTimeout) {
+                clearTimeout(this.searchTimeout);
+            }
+        },
+
+        openBookModal(lot) {
+            console.log('Opening booking modal for lot:', lot);
+            
+            if (this.hasActiveBooking) {
+                this.showMessage('You already have an active booking. Please release it first.', 'warning');
+                return;
+            }
+
+            if (lot.available_spots === 0) {
+                this.showMessage('No available spots in this parking lot', 'warning');
+                return;
+            }
+            
+            
+            this.bookingForm = {
+                lotId: lot.id,
+                lotName: lot.name,
+                lotAddress: lot.location, 
+                costPerHour: `₹${lot.cost_per_hour}`, 
+                vehicleNumber: ''
+            };
+            
+            console.log('Booking form populated:', this.bookingForm);
+            console.log('Lot data received:', lot);
+
+            // Force Vue to update the DOM and then show modal
+            this.$nextTick(() => {
+                // Small delay to ensure DOM is fully updated
+                setTimeout(() => {
+                    const modal = new bootstrap.Modal(document.getElementById('bookModal'));
+                    modal.show();
+                }, 50);
+            });
+        },
+
+        async doBooking() {
+            const vehicleNumber = this.bookingForm.vehicleNumber.trim().toUpperCase();
+            
+            if (!vehicleNumber) {
+                this.showMessage('Please enter your vehicle number', 'warning');
+                return;
+            }
+
+            if (vehicleNumber.length < 3) {
+                this.showMessage('Please enter a valid vehicle number', 'warning');
+                return;
+            }
+
+            this.bookingInProgress = true;
+            try {
+                console.log('Booking request:', {
+                    lot_id: this.bookingForm.lotId,
+                    vehicle_number: vehicleNumber
+                });
+
+                const response = await axios.post('/api/user/book', {
+                    lot_id: this.bookingForm.lotId,
+                    vehicle_number: vehicleNumber
+                });
+
+                console.log('Booking response:', response.data);
+
+                if (response.data.success) {
+                    this.showMessage('Parking spot booked successfully!', 'success');
+                    
+                    // Refresh data
+                    await this.loadData();
+                    
+                    // Hide modal
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('bookModal'));
+                    if (modal) modal.hide();
+                    
+                    // Clear form
+                    this.bookingForm = {
+                        lotId: '',
+                        lotName: '',
+                        lotAddress: '',
+                        costPerHour: '',
+                        vehicleNumber: ''
+                    };
+                } else {
+                    this.showMessage(response.data.message || 'Booking failed', 'danger');
+                }
+            } catch (error) {
+                console.error('Booking error:', error);
+                
+                let errorMessage = 'Booking failed. Please try again.';
+                if (error.response && error.response.data && error.response.data.message) {
+                    errorMessage = error.response.data.message;
+                }
+                
+                this.showMessage(errorMessage, 'danger');
+            } finally {
+                this.bookingInProgress = false;
+            }
+        },
+
+        openReleaseModal(booking) {
+            console.log('Opening release modal for booking:', booking);
+            
+            this.releaseForm.bookingId = booking.id;
+            this.releaseForm.vehicleNumber = booking.vehicle_number;
+            this.releaseForm.location = booking.location;
+            this.releaseForm.duration = this.getDuration(booking.parking_time, null);
+            
+            // Calculate estimated cost (assuming ₹30/hour)
+            const hours = this.getHours(booking.parking_time, null);
+            this.releaseForm.estimatedCost = Math.ceil(hours) * 30;
+
+            this.$nextTick(() => {
+                const modal = new bootstrap.Modal(document.getElementById('releaseModal'));
+                modal.show();
+            });
+        },
+
+        async doRelease() {
+            this.releaseInProgress = true;
+            try {
+                console.log('Release request:', {
+                    booking_id: this.releaseForm.bookingId
+                });
+
+                const response = await axios.post('/api/user/release', {
+                    booking_id: this.releaseForm.bookingId
+                });
+
+                console.log('Release response:', response.data);
+
+                if (response.data.success) {
+                    this.showMessage(response.data.message || `Parking released successfully! Total cost: ₹${response.data.release_details?.total_cost || 0}`, 'success');
+                    
+                    // Refresh data
+                    await this.loadData();
+                    
+                    // Hide modal
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('releaseModal'));
+                    if (modal) modal.hide();
+                } else {
+                    this.showMessage(response.data.message || 'Release failed', 'danger');
+                }
+            } catch (error) {
+                console.error('Release error:', error);
+                
+                let errorMessage = 'Release failed. Please try again.';
+                if (error.response && error.response.data && error.response.data.message) {
+                    errorMessage = error.response.data.message;
+                }
+                
+                this.showMessage(errorMessage, 'danger');
+            } finally {
+                this.releaseInProgress = false;
+            }
+        },
+
+        goToSummary() {
+            window.location.href = '/user/summary';
+        },
+
+        formatDateTime(dateStr) {
+            if (!dateStr) return 'N/A';
+            try {
+                return new Date(dateStr).toLocaleString('en-IN', {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } catch (error) {
+                return 'Invalid Date';
+            }
+        },
+
+        getDuration(start, end) {
+            if (!start) return 'N/A';
+            
+            try {
+                const startTime = new Date(start);
+                const endTime = end ? new Date(end) : new Date();
+                const diffMs = endTime - startTime;
+                
+                if (diffMs < 0) return 'N/A';
+                
+                const hours = Math.floor(diffMs / (1000 * 60 * 60));
+                const minutes = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                
+                if (hours > 0) {
+                    return `${hours}h ${minutes}m`;
+                } else {
+                    return `${minutes}m`;
+                }
+            } catch (error) {
+                return 'N/A';
+            }
+        },
+
+        getHours(start, end) {
+            if (!start) return 0;
+            
+            try {
+                const startTime = new Date(start);
+                const endTime = end ? new Date(end) : new Date();
+                const diffMs = endTime - startTime;
+                
+                if (diffMs < 0) return 0;
+                
+                return Math.max(0.1, diffMs / (1000 * 60 * 60)); // Minimum 0.1 hours
+            } catch (error) {
+                return 0;
+            }
+        },
+
+        showMessage(msg, type = 'info') {
+            const iconMap = {
+                'success': 'fas fa-check-circle',
+                'danger': 'fas fa-exclamation-circle',
+                'warning': 'fas fa-exclamation-triangle',
+                'info': 'fas fa-info-circle'
+            };
+            
+            this.alertMsg = msg;
+            this.alertType = type;
+            this.alertIcon = iconMap[type] || 'fas fa-info-circle';
+            this.showAlert = true;
+            
+            // Auto-hide after 5 seconds for success messages, 8 seconds for others
+            const timeout = type === 'success' ? 5000 : 8000;
+            setTimeout(() => {
+                this.hideAlert();
+            }, timeout);
+        },
+
+        hideAlert() {
+            this.showAlert = false;
+        }
+    }
+});
+
+function doLogout() {
+    if (confirm('Are you sure you want to logout?')) {
+        fetch('/logout', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        }).then(response => {
+            if (response.ok) {
+                window.location.href = '/';
+            } else {
+                throw new Error('Logout failed');
+            }
+        }).catch(error => {
+            console.error('Logout error:', error);
+            // Force redirect even if logout API fails
+            window.location.href = '/';
+        });
+    }
+}
+</script>
+{% endblock %}

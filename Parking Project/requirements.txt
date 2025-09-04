@@ -1,0 +1,37 @@
+# Flask and Web Framework
+Flask==2.3.3
+Flask-SQLAlchemy==3.0.5
+Flask-Mail==0.9.1
+Flask-Caching==2.1.0
+
+# Database
+SQLAlchemy==2.0.21
+
+# Security
+Werkzeug==2.3.7
+
+# Task Queue and Caching
+celery==5.3.4
+redis==5.0.1
+
+# Email
+email-validator==2.0.0
+
+# Data Processing
+pandas==2.1.1
+
+# Utilities
+python-dateutil==2.8.2
+pytz==2023.3
+
+# Development (optional)
+python-dotenv==1.0.0
+
+# For CSV handling (already in Python standard library, but explicit)
+# csv - built-in
+
+# For HTML email templates
+Jinja2==3.1.2
+
+# For background task monitoring (optional)
+flower==2.0.1

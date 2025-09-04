@@ -1,0 +1,496 @@
+{% extends "layout.html" %}
+
+{% block title %}User Profile - Vehicle Parking App{% endblock %}
+
+{% block styles %}
+<style>
+    .navbar-custom { background-color: #28a745; }
+    .card-custom { border-left: 4px solid #28a745; }
+    .btn-custom { background-color: #28a745; border-color: #28a745; }
+    .btn-custom:hover { background-color: #218838; border-color: #1e7e34; }
+    .profile-header { background: linear-gradient(135deg, #28a745 0%, #20c997 100%); }
+    .profile-avatar { width: 60px; height: 60px; border: 2px solid white; }
+    .dropdown-toggle::after { display: none; }
+    .password-form { display: none; }
+    .password-form.show { display: block; }
+    
+   
+    .export-card {
+        transition: all 0.3s ease;
+        border: 1px solid #e0e0e0;
+    }
+    
+    .export-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    }
+    
+    .export-btn-loading {
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .export-btn-loading::after {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        animation: loading-shimmer 1.5s infinite;
+    }
+    
+    @keyframes loading-shimmer {
+        0% { left: -100%; }
+        100% { left: 100%; }
+    }
+    
+    .export-status-icon {
+        font-size: 2.5rem;
+        margin-bottom: 1rem;
+    }
+    
+    .pulse-animation {
+        animation: pulse 2s infinite;
+    }
+    
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Navigation Bar -->
+<nav class="navbar navbar-expand-lg navbar-dark navbar-custom">
+    <div class="container-fluid">
+        <div class="d-flex">
+            <a class="navbar-brand me-4" href="{{ url_for('main.user_dashboard') }}">
+                <i class="fas fa-car"></i> ParkEasy
+            </a>
+            <div class="navbar-nav">
+                <a class="nav-link" href="{{ url_for('main.user_dashboard') }}">
+                    <i class="fas fa-dashboard"></i> Dashboard
+                </a>
+            </div>
+        </div>
+        <div class="navbar-nav">
+            <a class="nav-link" href="{{ url_for('main.logout') }}">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </a>
+        </div>
+    </div>
+</nav>
+
+<div class="container mt-4" id="profileApp">
+    <div class="row">
+        <!-- Left Side - Profile Information -->
+        <div class="col-md-8">
+            <div class="card card-custom">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-user-edit"></i> Edit Profile</h5>
+                </div>
+                <div class="card-body">
+                    <form @submit.prevent="updateProfile">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Username</label>
+                                <input type="text" class="form-control" v-model="profile.username" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Full Name</label>
+                                <input type="text" class="form-control" v-model="profile.fullname" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Address</label>
+                            <textarea class="form-control" rows="3" v-model="profile.address"></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Pin Code</label>
+                            <input type="text" class="form-control" v-model="profile.pincode">
+                        </div>
+                        <div class="text-end">
+                            <button type="submit" class="btn btn-custom" :disabled="updating">
+                                <span v-if="updating" class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                <i class="fas fa-save" v-else></i> 
+                                <span v-if="updating">Updating...</span>
+                                <span v-else>Update Profile</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Security Actions -->
+            <div class="card card-custom mt-4">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="fas fa-lock"></i> Security</h5>
+                </div>
+                <div class="card-body">
+                    <div class="profile-actions mb-3">
+                        <button 
+                            v-on:click="togglePasswordForm" 
+                            class="btn btn-primary"
+                            v-bind:disabled="loading"
+                            v-text="showPasswordForm ? 'Hide Form' : 'Change Password'"
+                        ></button>
+                    </div>
+                    
+                    <div class="password-form" :class="{ 'show': showPasswordForm }">
+                        <form @submit.prevent="changePassword">
+                            <div class="mb-3">
+                                <label class="form-label">Current Password</label>
+                                <input type="password" class="form-control" v-model="passwordForm.current_password" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">New Password</label>
+                                <input type="password" class="form-control" v-model="passwordForm.new_password" required>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label">Confirm New Password</label>
+                                <input type="password" class="form-control" v-model="passwordForm.confirm_password" required>
+                            </div>
+                            <div class="text-end">
+                                <button type="button" class="btn btn-secondary me-2" @click="cancelPasswordChange">
+                                    Cancel
+                                </button>
+                                <button type="submit" class="btn btn-warning" :disabled="changingPassword">
+                                    <span v-if="changingPassword" class="spinner-border spinner-border-sm me-2" role="status"></span>
+                                    <i class="fas fa-key" v-else></i> 
+                                    <span v-if="changingPassword">Changing...</span>
+                                    <span v-else>Change Password</span>
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        
+        <div class="col-md-4">
+            <!-- Small Profile Icon -->
+            <div class="card mb-3">
+                <div class="card-body text-center py-3">
+                    <div class="profile-avatar bg-success rounded-circle mx-auto mb-2 d-flex align-items-center justify-content-center">
+                        <i class="fas fa-user fa-lg text-white"></i>
+                    </div>
+                    <h6 class="mb-1">{{ current_user.fullname }}</h6>
+                    <small class="text-muted">{{ current_user.username }}</small>
+                </div>
+            </div>
+            
+            <!-- Enhanced Export Data Section -->
+            <div class="card card-custom export-card">
+                <div class="card-header bg-success text-white">
+                    <h6 class="mb-0"><i class="fas fa-download"></i> Export Parking History</h6>
+                </div>
+                <div class="card-body">
+                    <p class="text-muted mb-3">
+                        <small><i class="fas fa-info-circle"></i> Download your complete parking history as CSV file</small>
+                    </p>
+                    
+                    <!-- Export Status Display -->
+                    <div v-if="csvExport.status !== 'idle'" class="alert mb-3" 
+                         :class="{
+                             'alert-info': csvExport.status === 'processing',
+                             'alert-success': csvExport.status === 'completed',
+                             'alert-danger': csvExport.status === 'failed'
+                         }">
+                        <div class="d-flex align-items-center">
+                            <i class="fas" 
+                               :class="{
+                                   'fa-spinner fa-spin': csvExport.status === 'processing',
+                                   'fa-check-circle': csvExport.status === 'completed',
+                                   'fa-exclamation-triangle': csvExport.status === 'failed'
+                               }"
+                            ></i>
+                            <div class="ms-2">
+                                <small class="fw-bold" v-text="csvExport.message"></small>
+                                <div v-if="csvExport.recordCount" class="mt-1">
+                                    <small class="text-muted">Records: <span v-text="csvExport.recordCount"></span></small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-grid">
+                        <button 
+                            class="btn btn-success" 
+                            :class="{ 'export-btn-loading': exporting }"
+                            @click="exportCSV" 
+                            :disabled="exporting || csvExport.status === 'processing'"
+                        >
+                            <span v-if="exporting" class="spinner-border spinner-border-sm me-2"></span>
+                            <i class="fas fa-file-csv me-2" v-else></i>
+                            <span v-if="exporting">Starting Export...</span>
+                            <span v-else-if="csvExport.status === 'processing'">Export in Progress</span>
+                            <span v-else>Export as CSV</span>
+                        </button>
+                    </div>
+                    
+                    <div class="mt-2 text-center">
+                        <small class="text-muted">
+                            <i class="fas fa-envelope"></i>
+                            File will be sent to your email address
+                        </small>
+                    </div>
+                    
+                    <!-- Clear Status Button -->
+                    <div v-if="csvExport.status === 'completed' || csvExport.status === 'failed'" class="mt-2 d-grid">
+                        <button class="btn btn-outline-secondary btn-sm" @click="clearExportStatus">
+                            <i class="fas fa-times"></i> Clear Status
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success/Error Toast Messages -->
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
+    <div class="toast" id="successToast" role="alert">
+        <div class="toast-header bg-success text-white">
+            <i class="fas fa-check-circle me-2"></i>
+            <strong class="me-auto">Success</strong>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body" v-text="successMessage">
+        </div>
+    </div>
+    
+    <div class="toast" id="errorToast" role="alert">
+        <div class="toast-header bg-danger text-white">
+            <i class="fas fa-exclamation-circle me-2"></i>
+            <strong class="me-auto">Error</strong>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
+        </div>
+        <div class="toast-body" v-text="errorMessage">
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.3.4/vue.global.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.3.4/axios.min.js"></script>
+<script>
+const { createApp } = Vue;
+
+createApp({
+    data() {
+        return {
+            profile: {
+                username: '{{ current_user.username }}',
+                fullname: '{{ current_user.fullname or "" }}',
+                address: '{{ current_user.address or "" }}',
+                pincode: '{{ current_user.pincode or "" }}'
+            },
+            passwordForm: {
+                current_password: '',
+                new_password: '',
+                confirm_password: ''
+            },
+            //  CSV Export tracking
+            csvExport: {
+                status: 'idle', 
+                jobId: null,
+                message: '',
+                recordCount: null
+            },
+            successMessage: '',
+            errorMessage: '',
+            updating: false,
+            changingPassword: false,
+            exporting: false,
+            showPasswordForm: false,
+            loading: false
+        }
+    },
+    mounted() {
+        this.loadProfile();
+    },
+    methods: {
+        async loadProfile() {
+            try {
+                const response = await axios.get('/api/user/profile');
+                if (response.data && response.data.profile) {
+                    this.profile = {
+                        username: response.data.profile.username || this.profile.username,
+                        fullname: response.data.profile.fullname || this.profile.fullname,
+                        address: response.data.profile.address || this.profile.address,
+                        pincode: response.data.profile.pincode || this.profile.pincode
+                    };
+                }
+            } catch (error) {
+                console.error('Error loading profile:', error);
+                if (error.response && error.response.status !== 404) {
+                    this.showError('Error loading profile data');
+                }
+            }
+        },
+        
+        //  CSV Export Method for Celery Integration
+        async exportCSV() {
+            this.exporting = true;
+            this.csvExport.status = 'processing';
+            this.csvExport.message = 'Starting CSV export...';
+            
+            try {
+                console.log('🚀 Starting CSV export request...');
+                
+                const response = await axios.post('/api/user/export-csv', {
+                    headers: {
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                console.log('📊 Export response:', response.data);
+                
+                if (response.data.success) {
+                    // Update status based on Celery task
+                    this.csvExport.jobId = response.data.job_id;
+                    this.csvExport.message = 'Export job started successfully!';
+                    this.csvExport.status = 'processing';
+                    
+                    // Show success toast
+                    this.showSuccess('✅ CSV export started! You will receive an email when complete.');
+                    
+                    // Set a timeout to show completed status after reasonable time
+                    setTimeout(() => {
+                        if (this.csvExport.status === 'processing') {
+                            this.csvExport.status = 'completed';
+                            this.csvExport.message = 'Export completed - Check your email!';
+                        }
+                    }, 10000); // 10 seconds
+                    
+                } else {
+                    console.error('❌ Export failed:', response.data.message);
+                    this.csvExport.status = 'failed';
+                    this.csvExport.message = response.data.message || 'Export failed';
+                    this.showError('❌ Failed to start CSV export');
+                }
+                
+            } catch (error) {
+                console.error('❌ CSV Export error:', error);
+                
+                this.csvExport.status = 'failed';
+                this.csvExport.message = 'Export request failed';
+                
+                let errorMessage = 'Failed to export CSV';
+                if (error.response?.data?.message) {
+                    errorMessage = error.response.data.message;
+                    this.csvExport.message = errorMessage;
+                } else if (error.message) {
+                    errorMessage = error.message;
+                }
+                
+                this.showError('❌ ' + errorMessage);
+                
+            } finally {
+                this.exporting = false;
+            }
+        },
+        
+        // Clear export status
+        clearExportStatus() {
+            this.csvExport = {
+                status: 'idle',
+                jobId: null,
+                message: '',
+                recordCount: null
+            };
+        },
+        
+        // Profile update methods 
+        async updateProfile() {
+            this.updating = true;
+            try {
+                const response = await axios.put('/api/user/profile', this.profile);
+                if (response.data && response.data.success) {
+                    this.showSuccess('Profile updated successfully!');
+                } else {
+                    this.showError('Failed to update profile');
+                }
+            } catch (error) {
+                console.error('Error updating profile:', error);
+                const message = error.response?.data?.message || 'Error updating profile';
+                this.showError(message);
+            } finally {
+                this.updating = false;
+            }
+        },
+        
+        // Password change methods 
+        togglePasswordForm() {
+            this.showPasswordForm = !this.showPasswordForm;
+            if (!this.showPasswordForm) {
+                this.resetPasswordForm();
+            }
+        },
+        
+        cancelPasswordChange() {
+            this.showPasswordForm = false;
+            this.resetPasswordForm();
+        },
+        
+        resetPasswordForm() {
+            this.passwordForm = {
+                current_password: '',
+                new_password: '',
+                confirm_password: ''
+            };
+        },
+        
+        async changePassword() {
+            if (this.passwordForm.new_password !== this.passwordForm.confirm_password) {
+                this.showError('New passwords do not match');
+                return;
+            }
+            
+            if (this.passwordForm.new_password.length < 6) {
+                this.showError('New password must be at least 6 characters long');
+                return;
+            }
+            
+            this.changingPassword = true;
+            try {
+                const response = await axios.post('/api/user/change-password', this.passwordForm);
+                if (response.data && response.data.success) {
+                    this.showSuccess('Password changed successfully!');
+                    this.showPasswordForm = false;
+                    this.resetPasswordForm();
+                } else {
+                    this.showError('Failed to change password');
+                }
+            } catch (error) {
+                console.error('Error changing password:', error);
+                const message = error.response?.data?.message || 'Error changing password';
+                this.showError(message);
+            } finally {
+                this.changingPassword = false;
+            }
+        },
+        
+        // Toast notification methods
+        showSuccess(message) {
+            this.successMessage = message;
+            const toast = new bootstrap.Toast(document.getElementById('successToast'));
+            toast.show();
+        },
+        
+        showError(message) {
+            this.errorMessage = message;
+            const toast = new bootstrap.Toast(document.getElementById('errorToast'));
+            toast.show();
+        }
+    }
+}).mount('#profileApp');
+</script>
+{% endblock %}

@@ -1,0 +1,138 @@
+{% extends "layout.html" %}
+
+{% block title %}Login{% endblock %}
+
+{% block content %}
+<style>
+  body {
+    background: url("static/park_3.png") no-repeat center center fixed;
+    background-size: cover;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  }
+
+  .card {
+    background-color: rgba(255, 255, 255, 0.05); /* Transparent */
+    border-radius: 1rem;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(6px); 
+    -webkit-backdrop-filter: blur(6px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+    padding: 2.5rem 2rem;
+    color: white;
+  }
+
+  .slim-input {
+    max-width: 90%;
+    margin: auto;
+    background: rgba(255, 255, 255, 0.7);
+    border: 1px solid #ccc;
+    border-radius: 8px;
+  }
+
+  .app-header {
+    text-align: center;
+    margin-bottom: 1.5rem;
+  }
+
+  .app-header h2 {
+    font-weight: 600;
+    color: #fff;
+    margin-bottom: 0.3rem;
+    text-shadow: 1px 1px 3px black;
+  }
+
+  .app-header p {
+    font-size: 0.95rem;
+    color: #ddd;
+    text-shadow: 1px 1px 2px black;
+  }
+
+  .form-label {
+    font-weight: 500;
+    color: #eee;
+    margin-left: 5%;
+  }
+
+  button.btn-primary {
+    font-weight: bold;
+    font-size: 1rem;
+    padding: 0.5rem;
+    margin-top: 1rem;
+    border-radius: 2rem;
+  }
+
+  .alert {
+    margin-top: 1rem;
+    font-size: 0.95rem;
+  }
+
+  .register-option {
+    text-align: center;
+    margin-top: 1.2rem;
+    font-size: 0.9rem;
+    color: #fff;
+  }
+
+  .register-option a {
+    border: 1px solid white;
+    padding: 0.3rem 0.9rem;
+    border-radius: 20px;
+    margin-left: 0.4rem;
+    text-decoration: none;
+    color: white;
+    transition: background 0.3s, color 0.3s;
+  }
+
+  .register-option a:hover {
+    background: white;
+    color: #000;
+  }
+</style>
+
+<div id="app" class="container mt-5">
+  <div class="row justify-content-center">
+    <div class="col-md-6">
+      <div class="card">
+        <div class="app-header">
+          <h2>Vehicle Parking System</h2>
+          <p>Manage your parking with ease</p>
+        </div>
+        <div class="card-body">
+          <form @submit.prevent="login">
+            <div class="mb-3">
+              <label for="username" class="form-label">Username 📧:</label>
+              <input type="text" v-model="username" class="form-control slim-input" id="username" required>
+            </div>
+
+            <div class="mb-3">
+              <label for="password" class="form-label">Password 🔑:</label>
+              <input type="password" v-model="password" class="form-control slim-input" id="password" required>
+            </div>
+
+            <div class="d-flex justify-content-center">
+               <button type="submit" class="btn btn-primary" style="width: 40%;" :disabled="loading">
+                 [[ loading ? 'Signing in...' : 'Sign In' ]]
+               </button>
+            </div>
+  
+          </form>
+
+          <div v-if="message" class="alert" :class="{
+            'alert-success': success,
+            'alert-danger': !success
+          }">
+            [[ message ]]
+          </div>
+
+          <div class="register-option">
+            Don't have an account?
+            <a href="/register">Create New Account</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="{{ url_for('static', filename='js/Login.js') }}"></script>
+{% endblock %}

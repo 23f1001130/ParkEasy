@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Admin Profile</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.3.4/vue.global.min.js"></script>
+    <style>
+        .container { max-width: 600px; margin: 50px auto; padding: 20px; }
+        .back-button { 
+            margin-bottom: 20px; 
+            padding: 10px 20px; 
+            background: #6c757d; 
+            color: white; 
+            text-decoration: none; 
+            border-radius: 4px; 
+            display: inline-block;
+        }
+        .back-button:hover { background: #5a6268; text-decoration: none; color: white; }
+        .profile-card { background: #f5f5f5; padding: 20px; border-radius: 8px; margin-bottom: 20px; }
+        .warning { color: #ff6b35; font-style: italic; }
+        .btn { padding: 10px 20px; margin: 5px; border: none; border-radius: 4px; cursor: pointer; }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn:disabled { background: #6c757d; cursor: not-allowed; }
+        .form-group { margin-bottom: 15px; }
+        .form-group input { width: 100%; padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        .alert { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .alert-success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+        .alert-error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+        .loading { opacity: 0.6; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="container">
+            <a href="/admin/dashboard" class="back-button">← Back to Dashboard</a>
+            
+            <h1>Admin Profile</h1>
+            
+            <div class="profile-card">
+                <h3>Profile Information</h3>
+                <div v-if="loading" class="loading">
+                    <p>Loading profile...</p>
+                </div>
+                <div v-else>
+                    <p><strong>Username:</strong> <span v-text="admin.username || 'Loading...'"></span></p>
+                    <p v-if="admin.created_at">
+                        <strong>Created:</strong> <span v-text="formatDate(admin.created_at)"></span>
+                    </p>
+                    <p v-if="admin.is_default_password" class="warning">
+                        ⚠️ You are using the default password (admin123) - Change recommended for security
+                    </p>
+                </div>
+            </div>
+            
+            <div v-if="message" v-bind:class="'alert alert-' + messageType" v-text="message"></div>
+            
+            <div class="profile-actions">
+                <button 
+                    v-on:click="toggleUsernameForm" 
+                    class="btn btn-primary"
+                    v-bind:disabled="loading"
+                    v-text="showUsernameForm ? 'Hide Form' : 'Change Username'"
+                ></button>
+                <button 
+                    v-on:click="togglePasswordForm" 
+                    class="btn btn-primary"
+                    v-bind:disabled="loading"
+                    v-text="showPasswordForm ? 'Hide Form' : 'Change Password'"
+                ></button>
+            </div>
+            
+            <!-- Username Change Form -->
+            <div v-if="showUsernameForm" class="username-form">
+                <h3>Change Username</h3>
+                <form v-on:submit.prevent="handleUsernameChange">
+                    <div class="form-group">
+                        <input 
+                            type="text" 
+                            v-model="usernameForm.new_username"
+                            placeholder="New Username" 
+                            required
+                            v-bind:disabled="submittingUsername"
+                        >
+                    </div>
+                    <button 
+                        type="submit" 
+                        class="btn btn-success"
+                        v-bind:disabled="submittingUsername"
+                        v-text="submittingUsername ? 'Updating...' : 'Update Username'"
+                    ></button>
+                    <button 
+                        type="button" 
+                        v-on:click="cancelUsernameChange" 
+                        class="btn"
+                        v-bind:disabled="submittingUsername"
+                    >Cancel</button>
+                </form>
+            </div>
+            
+            <!-- Password Change Form -->
+            <div v-if="showPasswordForm" class="password-form">
+                <h3>Change Password</h3>
+                <form v-on:submit.prevent="handlePasswordChange">
+                    <div class="form-group">
+                        <input 
+                            type="password" 
+                            v-model="passwordForm.current_password"
+                            placeholder="Current Password" 
+                            required
+                            v-bind:disabled="submitting"
+                        >
+                    </div>
+                    <div class="form-group">
+                        <input 
+                            type="password" 
+                            v-model="passwordForm.new_password"
+                            placeholder="New Password (min 6 characters)" 
+                            required
+                            v-bind:disabled="submitting"
+                        >
+                    </div>
+                    <div class="form-group">
+                        <input 
+                            type="password" 
+                            v-model="passwordForm.confirm_password"
+                            placeholder="Confirm New Password" 
+                            required
+                            v-bind:disabled="submitting"
+                        >
+                    </div>
+                    <button 
+                        type="submit" 
+                        class="btn btn-success"
+                        v-bind:disabled="submitting"
+                        v-text="submitting ? 'Updating...' : 'Update Password'"
+                    ></button>
+                    <button 
+                        type="button" 
+                        v-on:click="cancelPasswordChange" 
+                        class="btn"
+                        v-bind:disabled="submitting"
+                    >Cancel</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const { createApp, ref, reactive, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                const admin = reactive({
+                    id: null,
+                    username: '',
+                    created_at: null,
+                    is_default_password: false
+                });
+
+                const usernameForm = reactive({
+                    new_username: ''
+                });
+
+                const passwordForm = reactive({
+                    current_password: '',
+                    new_password: '',
+                    confirm_password: ''
+                });
+
+                const loading = ref(false);
+                const submitting = ref(false);
+                const submittingUsername = ref(false);
+                const showUsernameForm = ref(false);
+                const showPasswordForm = ref(false);
+                const message = ref('');
+                const messageType = ref('success');
+
+                const loadAdminProfile = async () => {
+                    loading.value = true;
+                    try {
+                        const response = await fetch('/admin/profile', {
+                            method: 'GET',
+                            credentials: 'include',
+                            headers: {
+                                'Cache-Control': 'no-cache',
+                                'Pragma': 'no-cache',
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        if (response.ok) {
+                            const data = await response.json();
+                            console.log('Loaded admin data:', data);
+                            Object.assign(admin, data);
+                        } else {
+                            console.error('Profile fetch failed:', response.status, response.statusText);
+                            showMessage(`Failed to load profile: ${response.status}`, 'error');
+                        }
+                    } catch (error) {
+                        console.error('Profile fetch error:', error);
+                        showMessage('Error loading profile', 'error');
+                    } finally {
+                        loading.value = false;
+                    }
+                };
+
+                const toggleUsernameForm = () => {
+                    showUsernameForm.value = !showUsernameForm.value;
+                    if (!showUsernameForm.value) {
+                        clearUsernameForm();
+                    }
+                };
+
+                const togglePasswordForm = () => {
+                    showPasswordForm.value = !showPasswordForm.value;
+                    if (!showPasswordForm.value) {
+                        clearPasswordForm();
+                    }
+                };
+
+                const handleUsernameChange = async () => {
+                    if (!usernameForm.new_username.trim()) {
+                        showMessage('Username cannot be empty', 'error');
+                        return;
+                    }
+
+                    if (usernameForm.new_username.length < 3) {
+                        showMessage('Username must be at least 3 characters long', 'error');
+                        return;
+                    }
+
+                    submittingUsername.value = true;
+                    try {
+                        const response = await fetch('/admin/change-username', {
+                            method: 'POST',
+                            credentials: 'include',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                new_username: usernameForm.new_username
+                            })
+                        });
+
+                        const result = await response.json();
+
+                        if (response.ok) {
+                            showMessage(result.message, 'success');
+                            admin.username = usernameForm.new_username;
+                            showUsernameForm.value = false;
+                            clearUsernameForm();
+                            await loadAdminProfile();
+                        } else {
+                            showMessage(result.error, 'error');
+                        }
+
+                    } catch (error) {
+                        showMessage('Error changing username', 'error');
+                        console.error('Error:', error);
+                    } finally {
+                        submittingUsername.value = false;
+                    }
+                };
+
+                const handlePasswordChange = async () => {
+                    if (passwordForm.new_password !== passwordForm.confirm_password) {
+                        showMessage('New passwords do not match', 'error');
+                        return;
+                    }
+
+                    if (passwordForm.new_password.length < 6) {
+                        showMessage('Password must be at least 6 characters long', 'error');
+                        return;
+                    }
+
+                    submitting.value = true;
+                    try {
+                        const response = await fetch('/admin/change-password', {
+                            method: 'POST',
+                            credentials: 'include',
+                            headers: {
+                                'Content-Type': 'application/json',
+                            },
+                            body: JSON.stringify({
+                                current_password: passwordForm.current_password,
+                                new_password: passwordForm.new_password,
+                                confirm_password: passwordForm.confirm_password
+                            })
+                        });
+
+                        const result = await response.json();
+
+                        if (response.ok) {
+                            showMessage(result.message, 'success');
+                            showPasswordForm.value = false;
+                            admin.is_default_password = false;
+                            clearPasswordForm();
+                        } else {
+                            showMessage(result.error, 'error');
+                        }
+
+                    } catch (error) {
+                        showMessage('Error changing password', 'error');
+                        console.error('Error:', error);
+                    } finally {
+                        submitting.value = false;
+                    }
+                };
+
+                const cancelUsernameChange = () => {
+                    showUsernameForm.value = false;
+                    clearUsernameForm();
+                };
+
+                const cancelPasswordChange = () => {
+                    showPasswordForm.value = false;
+                    clearPasswordForm();
+                };
+
+                const clearUsernameForm = () => {
+                    usernameForm.new_username = '';
+                };
+
+                const clearPasswordForm = () => {
+                    passwordForm.current_password = '';
+                    passwordForm.new_password = '';
+                    passwordForm.confirm_password = '';
+                };
+
+                const showMessage = (msg, type = 'success') => {
+                    message.value = msg;
+                    messageType.value = type;
+                    
+                    if (type === 'success') {
+                        setTimeout(() => {
+                            message.value = '';
+                        }, 3000);
+                    }
+                };
+
+                const formatDate = (dateString) => {
+                    if (!dateString) return 'N/A';
+                    return new Date(dateString).toLocaleDateString();
+                };
+
+                onMounted(() => {
+                    loadAdminProfile();
+                });
+
+                return {
+                    admin,
+                    usernameForm,
+                    passwordForm,
+                    loading,
+                    submitting,
+                    submittingUsername,
+                    showUsernameForm,
+                    showPasswordForm,
+                    message,
+                    messageType,
+                    toggleUsernameForm,
+                    togglePasswordForm,
+                    handleUsernameChange,
+                    handlePasswordChange,
+                    cancelUsernameChange,
+                    cancelPasswordChange,
+                    formatDate
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>

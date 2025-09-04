@@ -1,0 +1,396 @@
+{% extends 'layout.html' %}
+{% block content %}
+
+<div id="admin-app">
+  
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#"><i class="fas fa-parking"></i> ParkEasy</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item">
+            <a class="nav-link active" aria-current="page" href="/admin/dashboard">
+              <i class="fas fa-home"></i> Home
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/admin/profile-page" target="_blank">
+              <i class="fas fa-user-shield"></i> Admin
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/admin/summary">
+              <i class="fas fa-chart-bar"></i> Summary
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/admin/users" target="_blank">
+              <i class="fas fa-users"></i> Users
+            </a>
+          </li>
+        </ul>
+        
+        <!-- Search and Logout Section -->
+        <div class="d-flex align-items-center">
+          <form class="d-flex me-3" role="search" @submit.prevent>
+            <input class="form-control me-2" type="search" placeholder="Search lots..." v-model="searchTerm">
+            <button class="btn btn-outline-success" type="button">
+              <i class="fas fa-search"></i>
+            </button>
+          </form>
+          
+          <!-- Logout Button -->
+          <button class="btn btn-outline-danger" @click="logout" title="Logout">
+            <i class="fas fa-sign-out-alt"></i> Logout
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Dashboard Content -->
+  <div class="container-fluid mt-4">
+    <div class="row">
+     
+      <div class="col-md-3">
+        <div class="card shadow-sm mb-4" style="background: linear-gradient(135deg, #28a745, #20c997);">
+          <div class="card-body text-white text-center">
+            <h4 class="card-title">Welcome to Admin</h4>
+            <p class="card-text">Manage your parking lots and monitor all activities from here.</p>
+            <div class="mt-3">
+              <i class="fas fa-user-shield fa-3x"></i>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Quick Stats -->
+        <div class="card shadow-sm">
+          <div class="card-header bg-dark text-white">
+            <h6 class="mb-0"><i class="fas fa-chart-pie"></i> Quick Stats</h6>
+          </div>
+          <div class="card-body">
+            <div class="d-flex justify-content-between mb-2">
+              <span><i class="fas fa-building"></i> Total Lots:</span>
+              <span class="badge bg-primary">[[ lots.length ]]</span>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+              <span><i class="fas fa-car"></i> Total Spots:</span>
+              <span class="badge bg-info">[[ totalSpots ]]</span>
+            </div>
+            <div class="d-flex justify-content-between">
+              <span><i class="fas fa-times-circle"></i> Occupied:</span>
+              <span class="badge bg-warning">[[ occupiedSpots ]]</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Dashboard Content -->
+      <div class="col-md-9">
+        <div class="card shadow-lg">
+          <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0"><i class="fas fa-parking"></i> Parking Lots</h4>
+            <button class="btn btn-success" @click="openLotModal(false)">
+              <i class="fas fa-plus"></i> Add Lot
+            </button>
+          </div>
+          
+          <div class="card-body">
+           
+            <div class="row">
+              <div class="col-md-6 col-lg-4 mb-4" v-for="lot in filteredLots" :key="lot.id">
+                <div class="card h-100 shadow-sm border-0" style="border-left: 4px solid #28a745 !important;">
+                  <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                    <h6 class="mb-0 text-truncate" :title="lot.prime_location_name">
+                      <i class="fas fa-map-marker-alt"></i> [[ lot.lot_name ]]
+                    </h6>
+                    <div class="dropdown">
+                      <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                        <i class="fas fa-ellipsis-v"></i>
+                      </button>
+                      <ul class="dropdown-menu">
+                        <li><a class="dropdown-item" href="#" @click.prevent="openLotModal(true, lot)">
+                          <i class="fas fa-edit"></i> Edit
+                        </a></li>
+                        <li><a class="dropdown-item text-danger" href="#" @click.prevent="deleteLot(lot.id)">
+                          <i class="fas fa-trash"></i> Delete
+                        </a></li>
+                      </ul>
+                    </div>
+                  </div>
+                  
+                  <div class="card-body">
+                    <p class="card-text small text-muted mb-2">
+                      <i class="fas fa-map-marker-alt"></i> [[ lot.address ]]
+                    </p>
+                    <p class="card-text small text-muted mb-2">
+                      <i class="fas fa-map-pin"></i> PIN: [[ lot.pincode ]]
+                    </p>
+                    <p class="card-text small mb-3">
+                      <i class="fas fa-money-bill-wave"></i> <strong>₹[[ lot.price_per_hour ]]/hr</strong> | 
+                      <span class="text-success"><i class="fas fa-check-circle"></i> [[ lot.available_spots || 0 ]] Available</span> / 
+                      <span class="text-danger"><i class="fas fa-times-circle"></i> [[ lot.occupied_spots || 0 ]] Occupied</span>
+                    </p>
+                    
+                   
+                    <div class="parking-spots-grid mb-3">
+                      <div class="spots-header d-flex justify-content-between align-items-center mb-2">
+                        <small class="text-muted"><i class="fas fa-th-large"></i> Spots ([[ lot.total_spots ]])</small>
+                        <div class="legend">
+                          <small class="text-muted">
+                            <span class="spot-legend available"></span> Available
+                            <span class="spot-legend occupied ms-2"></span> Occupied
+                          </small>
+                        </div>
+                      </div>
+                      <div class="spots-container">
+                        <div class="spot-grid">
+                          <div v-for="spot in lot.spots" :key="spot.id" 
+                               :class="['parking-spot', spot.status === 'O' ? 'occupied' : 'available']"
+                               :title="`Spot ${spot.id} - ${spot.status === 'O' ? 'Occupied' : 'Available'}`"
+                               @click="viewSpotDetails(spot)">
+                            [[ spot.spot_number || spot.id ]]
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Empty State -->
+            <div v-if="lots.length === 0" class="text-center py-5">
+              <i class="fas fa-parking fa-3x text-muted mb-3"></i>
+              <h5 class="text-muted">No Parking Lots Yet</h5>
+              <p class="text-muted">Create your first parking lot to get started.</p>
+              <button class="btn btn-success" @click="openLotModal(false)">
+                <i class="fas fa-plus"></i> Add Your First Lot
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add/Edit Parking Lot Modal -->
+    <div class="modal fade" id="lotModal" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header" style="background: linear-gradient(135deg, #ffc107, #fd7e14);">
+            <h5 class="modal-title text-dark">
+              <i class="fas fa-parking"></i> [[ isEditMode ? 'Edit' : 'New' ]] Parking Lot
+            </h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <form @submit.prevent="saveLot">
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label class="form-label fw-bold"><i class="fas fa-building"></i> Prime Location Name *</label>
+                    <input type="text" class="form-control" v-model="lotForm.lot_name" required 
+                           placeholder="e.g., City Mall Parking">
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label class="form-label fw-bold"><i class="fas fa-map-pin"></i> Pin Code *</label>
+                    <input type="text" class="form-control" v-model="lotForm.pincode" required 
+                           placeholder="e.g., 400100" maxlength="6">
+                  </div>
+                </div>
+              </div>
+              
+              <div class="mb-3">
+                <label class="form-label fw-bold"><i class="fas fa-map-marker-alt"></i> Address *</label>
+                <textarea v-model="lotForm.address" placeholder="Enter address" class="form-control"></textarea>
+              </div>
+              
+              <div class="row">
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label class="form-label fw-bold"><i class="fas fa-money-bill-wave"></i> Price per Hour (₹) *</label>
+                    <input type="number" class="form-control" v-model="lotForm.price_per_hour" required min="1"
+                           placeholder="e.g., 20">
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="mb-3">
+                    <label class="form-label fw-bold"><i class="fas fa-car"></i> Maximum Spots *</label>
+                   <input type="number" class="form-control" v-model="lotForm.number_of_spots" required min="1" placeholder="e.g., 15">
+                  </div>
+                </div>
+              </div>
+              
+              <div class="modal-footer border-0">
+                <button type="submit" class="btn btn-primary">
+                  <i class="fas fa-save"></i> [[ isEditMode ? 'Update' : 'Add' ]]
+                </button>
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                  <i class="fas fa-times"></i> Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Spot Details Modal -->
+    <div class="modal fade" id="spotModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header" :class="selectedSpot.status === 'O' ? 'bg-danger text-white' : 'bg-success text-white'">
+            <h5 class="modal-title">
+              <i class="fas fa-car"></i> Spot #[[ selectedSpot.id ]] Details
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row">
+              <div class="col-12">
+                <div class="alert" :class="selectedSpot.status === 'O' ? 'alert-danger' : 'alert-success'">
+                  <strong>Status:</strong> 
+                  <span v-if="selectedSpot.status === 'O'">
+                    <i class="fas fa-times-circle"></i> Occupied
+                  </span>
+                  <span v-else>
+                    <i class="fas fa-check-circle"></i> Available
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            <div v-if="selectedSpot.status === 'O'" class="mt-3">
+              <h6 class="border-bottom pb-2 mb-3"><i class="fas fa-info-circle"></i> Parking Details</h6>
+              <div class="row">
+                <div class="col-md-6">
+                  <p><strong><i class="fas fa-car"></i> Vehicle Number:</strong><br>[[ selectedSpot.vehicle_no || 'N/A' ]]</p>
+                </div>
+                <div class="col-md-6">
+                  <p><strong><i class="fas fa-user"></i> Customer:</strong><br>[[ selectedSpot.user_name || 'N/A' ]]</p>
+                </div>
+                <div class="col-md-6">
+                  <p><strong><i class="fas fa-clock"></i> Parked At:</strong><br>[[ formatDateTime(selectedSpot.timestamp) ]]</p>
+                </div>
+                <div class="col-md-6">
+                  <p><strong><i class="fas fa-hourglass-half"></i> Duration:</strong><br>[[ calculateDuration(selectedSpot.timestamp) ]]</p>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+              <i class="fas fa-times"></i> Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<style>
+.navbar {
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.navbar-brand i {
+  margin-right: 8px;
+}
+
+.nav-link i {
+  margin-right: 6px;
+}
+
+.parking-spot {
+  width: 30px;
+  height: 30px;
+  margin: 2px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.parking-spot.available {
+  background-color: #28a745;
+  color: white;
+  border: 2px solid #1e7e34;
+}
+
+.parking-spot.occupied {
+  background-color: #dc3545;
+  color: white;
+  border: 2px solid #c82333;
+}
+
+.parking-spot:hover {
+  transform: scale(1.1);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.spot-grid {
+  display: flex;
+  flex-wrap: wrap;
+  max-width: 300px;
+}
+
+.spot-legend {
+  width: 12px;
+  height: 12px;
+  display: inline-block;
+  border-radius: 2px;
+}
+
+.spot-legend.available {
+  background-color: #28a745;
+}
+
+.spot-legend.occupied {
+  background-color: #dc3545;
+}
+
+.card {
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.spots-container {
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+/* Icon spacing improvements */
+.card-header h6 i,
+.card-text i,
+.form-label i,
+.btn i {
+  margin-right: 6px;
+}
+
+.dropdown-item i {
+  margin-right: 8px;
+  width: 16px;
+}
+</style>
+
+<!-- Vue Script -->
+<script src="{{ url_for('static', filename='js/Admin_Dashboard.js') }}"></script>
+
+
+{% endblock %}

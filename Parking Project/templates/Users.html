@@ -1,0 +1,359 @@
+{% extends 'layout.html' %}
+{% block content %}
+
+<div id="users-app">
+  
+  <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <div class="container-fluid">
+      <a class="navbar-brand" href="#"><i class="fas fa-parking"></i> Parking App</a>
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+
+      <div class="collapse navbar-collapse" id="navbarNav">
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+          <li class="nav-item">
+            <a class="nav-link" href="/admin/dashboard">
+              <i class="fas fa-home"></i> Home
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/admin/profile-page">
+              <i class="fas fa-user-shield"></i> Admin
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link" href="/admin/summary">
+              <i class="fas fa-chart-bar"></i> Summary
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link active" aria-current="page" href="/admin/users">
+              <i class="fas fa-users"></i> Users
+            </a>
+          </li>
+        </ul>
+        
+        <!-- Search and Back Button -->
+        <div class="d-flex align-items-center">
+          <form class="d-flex me-3" role="search" @submit.prevent>
+            <input class="form-control me-2" type="search" placeholder="Search users..." v-model="searchTerm">
+            <button class="btn btn-outline-success" type="button">
+              <i class="fas fa-search"></i>
+            </button>
+          </form>
+          
+          <!-- Back to Dashboard Button -->
+          <a href="/admin/dashboard" class="btn btn-outline-primary me-2" title="Back to Dashboard">
+            <i class="fas fa-arrow-left"></i> Back
+          </a>
+          
+          <!-- Logout Button -->
+          <button class="btn btn-outline-danger" @click="logout" title="Logout">
+            <i class="fas fa-sign-out-alt"></i> Logout
+          </button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Users Management Content -->
+  <div class="container-fluid mt-4">
+    <div class="row">
+     
+      <div class="col-md-3">
+        <div class="card shadow-sm mb-4" style="background: linear-gradient(135deg, #007bff, #0056b3);">
+          <div class="card-body text-white text-center">
+            <h4 class="card-title">User Management</h4>
+            <p class="card-text">Monitor and manage all registered users in your parking system.</p>
+            <div class="mt-3">
+              <i class="fas fa-users fa-3x"></i>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Quick User Stats -->
+        <div class="card shadow-sm">
+          <div class="card-header bg-dark text-white">
+            <h6 class="mb-0"><i class="fas fa-chart-pie"></i> User Statistics</h6>
+          </div>
+          <div class="card-body">
+            <div class="d-flex justify-content-between mb-2">
+              <span><i class="fas fa-users"></i> Total Users:</span>
+              <span class="badge bg-primary">[[ users.length ]]</span>
+            </div>
+            <div class="d-flex justify-content-between mb-2">
+              <span><i class="fas fa-user-plus"></i> Today:</span>
+              <span class="badge bg-success">[[ todayRegistrations ]]</span>
+            </div>
+            <div class="d-flex justify-content-between">
+              <span><i class="fas fa-calendar-week"></i> This Week:</span>
+              <span class="badge bg-info">[[ weekRegistrations ]]</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Users Content -->
+      <div class="col-md-9">
+        <div class="card shadow-lg">
+          <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0"><i class="fas fa-users"></i> Registered Users</h4>
+            <div class="d-flex align-items-center">
+              <span class="badge bg-light text-dark me-2">Total: [[ filteredUsers.length ]]</span>
+              <button class="btn btn-success btn-sm" @click="exportUsers">
+                <i class="fas fa-download"></i> Export
+              </button>
+            </div>
+          </div>
+          
+          <div class="card-body">
+            <!-- Users Table -->
+            <div class="table-responsive">
+              <table class="table table-hover table-striped">
+                <thead class="table-dark">
+                  <tr>
+                    <th scope="col" @click="sortBy('id')" style="cursor: pointer;">
+                      <i class="fas fa-hashtag"></i> S.No.
+                      <i class="fas fa-sort ms-1"></i>
+                    </th>
+                    <th scope="col" @click="sortBy('full_name')" style="cursor: pointer;">
+                      <i class="fas fa-user"></i> Full Name
+                      <i class="fas fa-sort ms-1"></i>
+                    </th>
+                    <th scope="col" @click="sortBy('username')" style="cursor: pointer;">
+                      <i class="fas fa-at"></i> Username
+                      <i class="fas fa-sort ms-1"></i>
+                    </th>
+                    <th scope="col" @click="sortBy('pincode')" style="cursor: pointer;">
+                      <i class="fas fa-map-pin"></i> Pincode
+                      <i class="fas fa-sort ms-1"></i>
+                    </th>
+                    <th scope="col">
+                      <i class="fas fa-map-marker-alt"></i> Address
+                    </th>
+                    <th scope="col" @click="sortBy('created_at')" style="cursor: pointer;">
+                      <i class="fas fa-calendar-plus"></i> Registered
+                      <i class="fas fa-sort ms-1"></i>
+                    </th>
+                    <th scope="col">
+                      <i class="fas fa-cog"></i> Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(user, index) in paginatedUsers" :key="user.id" class="user-row">
+                    <td>
+                      <span class="badge bg-secondary">[[ (currentPage - 1) * itemsPerPage + index + 1 ]]</span>
+                    </td>
+                    <td>
+                      <div class="d-flex align-items-center">
+                        <div class="user-avatar me-2">
+                          <i class="fas fa-user-circle fa-2x text-primary"></i>
+                        </div>
+                        <div>
+                          <strong>[[ user.full_name || 'N/A' ]]</strong>
+                        </div>
+                      </div>
+                    </td>
+                    <td>
+                      <code class="bg-light p-1 rounded">[[ user.username ]]</code>
+                    </td>
+                    <td>
+                      <span class="badge bg-info">[[ user.pincode ]]</span>
+                    </td>
+                    <td>
+                      <small class="text-muted" :title="user.address">
+                        [[ truncateAddress(user.address) ]]
+                      </small>
+                    </td>
+                    <td>
+                      <small class="text-muted">
+                        <i class="fas fa-clock"></i> [[ formatDate(user.created_at) ]]
+                      </small>
+                    </td>
+                    <td>
+                      <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                          <i class="fas fa-ellipsis-v"></i>
+                        </button>
+                        <ul class="dropdown-menu">
+                          <li><a class="dropdown-item" href="#" @click.prevent="viewUserDetails(user)">
+                            <i class="fas fa-eye"></i> View Details
+                          </a></li>
+                        </ul>
+                      </div>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Pagination -->
+            <div class="d-flex justify-content-between align-items-center mt-4" v-if="totalPages > 1">
+              <div>
+                <small class="text-muted">
+                  Showing [[ (currentPage - 1) * itemsPerPage + 1 ]] to [[ Math.min(currentPage * itemsPerPage, filteredUsers.length) ]] of [[ filteredUsers.length ]] users
+                </small>
+              </div>
+              <nav>
+                <ul class="pagination pagination-sm mb-0">
+                  <li class="page-item" :class="{ disabled: currentPage === 1 }">
+                    <a class="page-link" href="#" @click.prevent="changePage(currentPage - 1)">
+                      <i class="fas fa-chevron-left"></i>
+                    </a>
+                  </li>
+                  <li class="page-item" v-for="page in visiblePages" :key="page" :class="{ active: page === currentPage }">
+                    <a class="page-link" href="#" @click.prevent="changePage(page)">[[ page ]]</a>
+                  </li>
+                  <li class="page-item" :class="{ disabled: currentPage === totalPages }">
+                    <a class="page-link" href="#" @click.prevent="changePage(currentPage + 1)">
+                      <i class="fas fa-chevron-right"></i>
+                    </a>
+                  </li>
+                </ul>
+              </nav>
+            </div>
+
+            <!-- Empty State -->
+            <div v-if="users.length === 0" class="text-center py-5">
+              <i class="fas fa-users fa-3x text-muted mb-3"></i>
+              <h5 class="text-muted">No Users Registered Yet</h5>
+              <p class="text-muted">Users will appear here once they register for the parking system.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- User Details Modal -->
+    <div class="modal fade" id="userDetailsModal" tabindex="-1">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header bg-primary text-white">
+            <h5 class="modal-title">
+              <i class="fas fa-user"></i> User Details
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body">
+            <div class="row" v-if="selectedUser">
+              <div class="col-md-4 text-center">
+                <div class="user-profile-section">
+                  <i class="fas fa-user-circle fa-5x text-primary mb-3"></i>
+                  <h5>[[ selectedUser.full_name || 'N/A' ]]</h5>
+                  <p class="text-muted">@[[ selectedUser.username ]]</p>
+                </div>
+              </div>
+              <div class="col-md-8">
+                <h6 class="border-bottom pb-2 mb-3"><i class="fas fa-info-circle"></i> Personal Information</h6>
+                <div class="row">
+                  <div class="col-md-6">
+                    <p><strong><i class="fas fa-id-card"></i> User ID:</strong><br>[[ selectedUser.id ]]</p>
+                  </div>
+                  <div class="col-md-6">
+                    <p><strong><i class="fas fa-user"></i> Full Name:</strong><br>[[ selectedUser.full_name || 'N/A' ]]</p>
+                  </div>
+                  <div class="col-md-6">
+                    <p><strong><i class="fas fa-at"></i> Username:</strong><br>[[ selectedUser.username ]]</p>
+                  </div>
+                  <div class="col-md-6">
+                    <p><strong><i class="fas fa-map-pin"></i> Pincode:</strong><br>[[ selectedUser.pincode ]]</p>
+                  </div>
+                  <div class="col-12">
+                    <p><strong><i class="fas fa-map-marker-alt"></i> Address:</strong><br>[[ selectedUser.address ]]</p>
+                  </div>
+                  <div class="col-md-6">
+                    <p><strong><i class="fas fa-calendar-plus"></i> Registered:</strong><br>[[ formatDateTime(selectedUser.created_at) ]]</p>
+                  </div>
+                  <div class="col-md-6">
+                    <p><strong><i class="fas fa-history"></i> Last Active:</strong><br>[[ formatDateTime(selectedUser.last_login) ]]</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+              <i class="fas fa-times"></i> Close
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<style>
+.navbar {
+  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+
+.navbar-brand i, .nav-link i {
+  margin-right: 6px;
+}
+
+.user-row {
+  transition: background-color 0.2s;
+}
+
+.user-row:hover {
+  background-color: rgba(0,123,255,0.05);
+}
+
+.table th {
+  font-weight: 600;
+  border-top: none;
+}
+
+.table th:hover {
+  background-color: rgba(0,0,0,0.1);
+}
+
+.user-avatar {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.user-profile-section {
+  padding: 20px;
+  background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+  border-radius: 10px;
+  margin-bottom: 20px;
+}
+
+.card {
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.dropdown-item i {
+  margin-right: 8px;
+  width: 16px;
+}
+
+.badge {
+  font-size: 0.75em;
+}
+
+.pagination {
+  --bs-pagination-active-bg: #007bff;
+  --bs-pagination-active-border-color: #007bff;
+}
+
+code {
+  font-size: 0.875em;
+}
+</style>
+
+<script src="{{ url_for('static', filename='js/Users.js') }}"></script>
+
+{% endblock %}

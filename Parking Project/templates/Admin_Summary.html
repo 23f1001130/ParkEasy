@@ -1,0 +1,160 @@
+{% extends 'layout.html' %}
+
+{% block title %}Admin Summary{% endblock %}
+
+{% block styles %}
+<style>
+    body {
+        background-color: #f8f9fa;
+    }
+    .chart-container {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        min-height: 400px;
+    }
+    .chart-container canvas {
+        max-height: 350px !important;
+    }
+    .loading-spinner {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 300px;
+    }
+    .no-data {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 300px;
+        color: #6c757d;
+        font-size: 1.1rem;
+        flex-direction: column;
+    }
+    .chart-content {
+        position: relative;
+        height: 350px;
+    }
+    .chart-wrapper {
+        position: relative;
+        height: 350px;
+        width: 100%;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="admin-app">
+  
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="#"><i class="fas fa-parking"></i> Parking App</a>
+            
+            <div class="navbar-nav me-auto">
+                <a class="nav-link" href="/admin/dashboard">
+                    <i class="fas fa-home"></i> Dashboard
+                </a>
+                <a class="nav-link active" href="/admin/summary">
+                    <i class="fas fa-chart-bar"></i> Summary
+                </a>
+            </div>
+            
+            <button class="btn btn-outline-danger" onclick="doLogout()">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container-fluid mt-4">
+        
+        <div class="row">
+            <!-- Chart 1: Total Revenue by Parking Lot -->
+            <div class="col-lg-6">
+                <div class="chart-container">
+                    <h4 class="mb-4 text-center">
+                        <i class="fas fa-chart-bar text-success"></i> Total Revenue by Parking Lot
+                    </h4>
+                    
+                    <div class="chart-content">
+                       
+                        <div v-if="loading" class="loading-spinner">
+                            <div class="spinner-border text-success" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                        
+                        <!-- No Data Message -->
+                        <div v-else-if="!hasRevenueData" class="no-data">
+                            <i class="fas fa-chart-bar fa-3x mb-3 text-muted"></i>
+                            <div><strong>No revenue data available</strong></div>
+                            <small class="text-muted">Revenue will appear when users make bookings</small>
+                        </div>
+                        
+                        <!-- Chart Canvas - Always present -->
+                        <div class="chart-wrapper" v-show="!loading && hasRevenueData">
+                            <canvas id="revenueChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Chart 2: Available vs Occupied Spots -->
+            <div class="col-lg-6">
+                <div class="chart-container">
+                    <h4 class="mb-4 text-center">
+                        <i class="fas fa-chart-pie text-primary"></i> Available vs Occupied Spots
+                    </h4>
+                    
+                    <div class="chart-content">
+                        <!-- Loading Spinner -->
+                        <div v-if="loading" class="loading-spinner">
+                            <div class="spinner-border text-primary" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                        </div>
+                        
+                        <!-- No Data Message -->
+                        <div v-else-if="!hasOccupancyData" class="no-data">
+                            <i class="fas fa-chart-pie fa-3x mb-3 text-muted"></i>
+                            <div><strong>No parking spots data available</strong></div>
+                            <small class="text-muted">Create parking lots with spots to see occupancy</small>
+                        </div>
+                        
+                        <!-- Chart Canvas  -->
+                        <div class="chart-wrapper" v-show="!loading && hasOccupancyData">
+                            <canvas id="occupancyChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Chart.js version -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/vue/3.3.4/vue.global.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.3.4/axios.min.js"></script>
+
+<!-- Wait for libraries to load -->
+<script>
+window.addEventListener('load', function() {
+    console.log('Window loaded. Chart available:', typeof Chart !== 'undefined');
+    console.log('Vue available:', typeof Vue !== 'undefined');
+    console.log('Axios available:', typeof axios !== 'undefined');
+    
+    if (typeof Chart !== 'undefined') {
+        console.log('Chart.js version:', Chart.version);
+    }
+});
+</script>
+
+<!-- Your app script  -->
+<script src="{{ url_for('static', filename='js/Admin_Summary.js') }}"></script>
+
+{% endblock %}

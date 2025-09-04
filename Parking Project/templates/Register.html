@@ -1,0 +1,160 @@
+{% extends "layout.html" %} 
+
+{% block title %}Register{% endblock %}
+
+{% block styles %}
+<style>
+  body {
+    background: url("{{ url_for('static', filename='park image.png') }}") no-repeat center center fixed;
+    background-size: cover;
+    height: 100vh;
+    margin: 0;
+    position: relative;
+  }
+
+  .register-card {
+    position: absolute;
+    top: 50%;
+    right: 30px;
+    transform: translateY(-50%);
+    background-color: rgba(255, 255, 255, 0.07);
+    border-radius: 20px;
+    box-shadow: 0 0 25px rgba(0, 0, 0, 0.4);
+    padding: 30px;
+    backdrop-filter: blur(12px);
+    color: white;
+    width: 610px;
+  }
+
+  .card-header {
+    background-color: transparent !important;
+    text-align: center;
+    padding-bottom: 10px;
+  }
+
+  .card-header h4 {
+    font-weight: bold;
+    color: #ffffff;
+    font-size: 28px;
+  }
+
+  .form-label {
+    font-weight: 500;
+    color: white;
+  }
+
+  .form-control {
+    background-color: rgba(255,255,255,0.1);
+    border: 1px solid rgba(255,255,255,0.3);
+    color: white;
+  }
+
+  .form-control::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+  }
+
+  .form-control:focus {
+    background-color: rgba(255,255,255,0.15);
+    color: white;
+    box-shadow: none;
+  }
+
+  .btn-custom {
+    border-radius: 30px;
+    width: 25%;
+    background-color: transparent;
+    color: white;
+    border: 2px solid white;
+    transition: 0.3s;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin: 20px auto 0 auto;
+  }
+
+  .btn-custom:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+
+  .no-account {
+    margin-top: 20px;
+    text-align: center;
+    color: white;
+  }
+
+  .no-account a {
+    border-radius: 20px;
+    border: 1px solid white;
+    padding: 6px 14px;
+    text-decoration: none;
+    color: white;
+    transition: 0.3s;
+  }
+
+  .no-account a:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div id="app" class="container mt-5">
+  <div class="row justify-content-start">
+    <div class="col-md-6">
+      <div class="card register-card">
+        <div class="card-header">
+          <h4 class="mb-0">Create Your Account</h4>
+        </div>
+        <div class="card-body">
+          <form @submit.prevent="register">
+            <div class="mb-3">
+              <label for="username" class="form-label">Username 📧:</label>
+              <input type="text" v-model="username" class="form-control" id="username" required>
+            </div>
+
+            <div class="mb-3">
+              <label for="fullname" class="form-label">Full Name 🪪:</label>
+              <input type="text" v-model="fullname" class="form-control" id="fullname" required>
+            </div>
+
+            <div class="mb-3">
+              <label for="address" class="form-label">Address 📬:</label>
+              <input type="text" v-model="address" class="form-control" id="address" required>
+            </div>
+
+            <div class="mb-3">
+              <label for="pincode" class="form-label">Pincode 📍:</label>
+              <input type="text" v-model="pincode" class="form-control" id="pincode" required>
+            </div>
+
+            <div class="mb-3">
+              <label for="password" class="form-label">Password 🔐:</label>
+              <input type="password" v-model="password" class="form-control" id="password" required>
+            </div>
+
+            <button type="submit" class="btn btn-custom mt-3" :disabled="loading">
+              [[ loading ? 'Registering...' : 'Register' ]]
+            </button>
+          </form>
+
+          <div v-if="message" class="alert mt-3" :class="{
+            'alert-success': success,
+            'alert-danger': !success
+          }">
+            [[ message ]]
+          </div>
+
+          <div class="no-account">
+            <p>Already have an account?</p>
+            <a href="{{ url_for('main.show_login_form') }}">Login</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script src="{{ url_for('static', filename='js/Register.js') }}"></script>
+
+{% endblock %}
